@@ -1168,9 +1168,23 @@ def round_digits(digits, dps, base, rounding=round_nearest, tying=tie_to_even):
     return digits, exponent
 
 
+def abs_rounding(rounding, sign):
+    """
+    Take into account the sign to determine which kind of rounding the actual
+    digits will use.
+    """
+
+    if rounding == round_ceiling:
+        return round_down if sign else round_up
+    elif rounding == round_floor:
+        return round_up if sign else round_down
+    else:
+        return rounding
+
 
 def to_str(s, dps, strip_zeros=True, min_fixed=None, max_fixed=None,
-           show_zero_exponent=False, base=10, binary_exp=False):
+           show_zero_exponent=False, base=10, binary_exp=False,
+           rounding=round_nearest, tying=tie_away_from_zero):
     """
     Convert a raw mpf to a floating-point literal in the given base
     with at most `dps` digits in the mantissa (not counting extra zeros
@@ -1193,12 +1207,19 @@ def to_str(s, dps, strip_zeros=True, min_fixed=None, max_fixed=None,
     The literal is formatted so that it can be parsed back to a number
     by from_str, float(), float.fromhex() or Decimal().
     """
+
     sep = '@' if base > 10 else 'e'
 
     if binary_exp:
         sep = 'p'
         if base not in (2, 16):
             raise ValueError("binary_exp option could be used for base 2 and 16")
+
+    if base != 10 and (
+            rounding != round_nearest or tying != tie_away_from_zero):
+        raise NotImplementedError('Rounding and tying types different from '
+                                  'the default ones are only implemented for '
+                                  'base 10.')
 
     if base == 2:
         prefix = "0b"
@@ -1248,20 +1269,9 @@ def to_str(s, dps, strip_zeros=True, min_fixed=None, max_fixed=None,
                 digits = hex(n)[2:]
 
         # Rounding up kills some instances of "...99999"
-        if len(digits) > dps and digits[dps] in rnd_digs:
-            digits = digits[:dps]
-            i = dps - 1
-            dig = stddigits[base-1]
-            while i >= 0 and digits[i] == dig:
-                i -= 1
-            if i >= 0:
-                digits = digits[:i] + stddigits[int(digits[i], base) + 1] + \
-                    '0' * (dps - i - 1)
-            else:
-                digits = '1' + '0' * (dps - 1)
-                exponent += 1
-        else:
-            digits = digits[:dps]
+        rounding = abs_rounding(rounding, s[0])
+        digits, exp_add = round_digits(digits, dps, base, rounding, tying)
+        exponent += exp_add
 
         # Prettify numbers close to unit magnitude
         if not binary_exp and min_fixed < exponent < max_fixed:
@@ -1631,12 +1641,7 @@ def format_mpf(num, format_spec):
     strip_last_zero = False
     strip_zeros = False
 
-    if format_dict['rounding'] == round_ceiling:
-        rounding = round_down if num[0] else round_up
-    elif format_dict['rounding'] == round_floor:
-        rounding = round_up if num[0] else round_down
-    else:
-        rounding = format_dict['rounding']
+    rounding = abs_rounding(format_dict['rounding'], num[0])
 
     if fmt_type == 'g':
         if not format_dict['alternate']:
