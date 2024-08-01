@@ -40,6 +40,10 @@ round_up = sys.intern('u')
 round_down = sys.intern('d')
 round_fast = round_down
 
+# Supported tying modes
+tie_away_from_zero = sys.intern('a')
+tie_to_even = sys.intern('e')
+
 def prec_to_dps(n):
     """Return number of accurate decimals that can be represented
     with a precision of n bits."""
@@ -1102,7 +1106,7 @@ def to_digits_exp(s, dps, base=10):
     exponent += len(digits) - fixdps - 1
     return sign, digits, exponent
 
-def round_digits(digits, dps, base, rounding=round_nearest):
+def round_digits(digits, dps, base, rounding=round_nearest, tying=tie_to_even):
     '''
     Returns the rounded digits, and the number of places the decimal point was
     shifted.
@@ -1112,6 +1116,7 @@ def round_digits(digits, dps, base, rounding=round_nearest):
 
     assert len(digits) > dps
     assert rounding in (round_nearest, round_up, round_down)
+    assert tying in (tie_to_even, tie_away_from_zero)
 
     exponent = 0
 
@@ -1122,19 +1127,26 @@ def round_digits(digits, dps, base, rounding=round_nearest):
     else:
         rnd_digs = stddigits[:base]
 
-    tie_up = False
+    if tying == tie_to_even:
+        tie_down = True
 
-    # The first digit after dps is a 5.
-    if digits[dps] == rnd_digs[0]:
-        for i in range(dps+1, len(digits)):
-            if digits[i] != '0':
-                tie_up = True
-                break
-        if digits[dps-1] in stddigits[1:base:2]:
-            tie_up = True
+        # The first digit after dps is a 5 (in base 10).
+        if digits[dps] == rnd_digs[0]:
+            # If the digit we want to round to is odd, we don't check whether
+            # we have to perform tying
+            if digits[dps-1] in stddigits[1:base:2]:
+                tie_down = False
+            else:
+                for i in range(dps+1, len(digits)):
+                    if digits[i] != '0':
+                        tie_down = False
+                        break
+    else:
+        tie_down = False
 
-    if not tie_up:
-
+    # Lower the following digit in one unit so that later it will be rounded
+    # down
+    if tie_down:
         digits = digits[:dps] + stddigits[int(digits[dps], base) - 1]
 
     # Rounding up kills some instances of "...99999"
