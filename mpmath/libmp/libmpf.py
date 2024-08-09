@@ -1504,9 +1504,6 @@ def format_fixed(s,
     if sign != '-' and sign_spec != '-':
         sign = sign_spec
 
-    if add_pct:
-        dps += 2
-
     # The number we want to print is lower in magnitude that the requested
     # precision. We should only print 0s.
     if exponent + precision < -1:
@@ -1617,23 +1614,24 @@ def format_mpf(num, format_spec):
     add_pct = False
     if fmt_type == '%':
         add_pct = True
+        num *= 100
         fmt_type = 'f'
 
     digits = ''
     sign = ''
 
     # Special cases:
-    if num in (fnan, finf, fninf, fzero, fnzero):
-        return format(to_float(num), format_spec)
+    if num._mpf_ in (fnan, finf, fninf, fzero, fnzero):
+        return format(to_float(num._mpf_), format_spec)
 
     # Now the general case
     strip_last_zero = False
     strip_zeros = False
 
     if format_dict['rounding'] == round_ceiling:
-        rounding = round_down if num[0] else round_up
+        rounding = round_down if num._mpf_[0] else round_up
     elif format_dict['rounding'] == round_floor:
-        rounding = round_up if num[0] else round_down
+        rounding = round_up if num._mpf_[0] else round_down
     else:
         rounding = format_dict['rounding']
 
@@ -1642,7 +1640,7 @@ def format_mpf(num, format_spec):
             strip_last_zero = True
             strip_zeros = True
 
-        _, _, exp = to_digits_exp(num, 53/blog2_10, 10)
+        _, _, exp = to_digits_exp(num._mpf_, 53/blog2_10, 10)
         if precision == 0:
             precision = 1
 
@@ -1655,7 +1653,7 @@ def format_mpf(num, format_spec):
 
     if fmt_type == 'f':
         sign, digits = format_fixed(
-                num,
+                num._mpf_,
                 precision=precision,
                 strip_zeros=strip_zeros,
                 strip_last_zero=strip_last_zero,
@@ -1670,7 +1668,7 @@ def format_mpf(num, format_spec):
                 )
     else:  # The format type is scientific
         sign, digits = format_scientific(
-                num,
+                num._mpf_,
                 precision=precision,
                 strip_zeros=strip_zeros,
                 sign_spec=format_dict['sign'],
