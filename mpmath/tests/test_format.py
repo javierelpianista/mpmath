@@ -477,6 +477,13 @@ def test_mpf_float():
         fmt_str = random_fmt()
         assert fmt_str.format(fp.mpf(num)) == fmt_str.format(mp.mpf(num))
 
+    # Some tests for the '%' to ensure that we are correctly multiplying by
+    # 100.
+    for _ in range(1000):
+        fmt_str = '.' + str(random.uniform(20, 40)) + '%'
+        num = random.uniform(-5e50, 5e50)
+        assert fmt_str.format(mp.mpf(num)) == fmt_str.format(fp.mpf(num))
+
 
 def test_mpf_fmt():
     '''
