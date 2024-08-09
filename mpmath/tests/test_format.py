@@ -63,7 +63,7 @@ def random_fmt():
         fmt_str += '.' + str(random.randint(1, 40))
 
     # Type
-    fmt_str += random.choice('fFgGeE')
+    fmt_str += random.choice('fFgGeE%')
     fmt_str += '}'
 
     return fmt_str
@@ -558,6 +558,12 @@ def test_mpf_fmt():
         assert f"{mp.mpf('0.24'):=+20.2f}" == '+               0.24'
         assert f"{mp.mpf('0.24'):=+020.2e}" == '+000000000002.40e-01'
         assert f"{mp.mpf('0.24'):=+020.2g}" == '+0000000000000000.24'
+
+        # Tests for the % format mode
+        assert f"{mp.mpf('1e-6'):.2%}" == "0.00%"
+        assert f"{mp.mpf('0.15'):.2%}" == "15.00%"
+        assert f"{mp.mpf('0.15'):.3%}" == "15.000%"
+        assert f"{mp.mpf('1'):.5%}" == "100.00000%"
 
         # Tests for different kinds of rounding
         num = mp.mpf('-1.23456789999901234567')
