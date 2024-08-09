@@ -1387,7 +1387,7 @@ _FLOAT_FORMAT_SPECIFICATION_MATCHER = re.compile(r"""
     (?P<thousands_separators>[,_])?
     (?:\.(?P<precision>0|[1-9][0-9]*))?
     (?P<rounding>[UDZN])?
-    (?P<type>[eEfFgG])
+    (?P<type>[eEfFgG%])
 """, re.DOTALL | re.VERBOSE).fullmatch
 
 _GMPY_ROUND_CHAR_DICT = {
@@ -1477,7 +1477,8 @@ def format_fixed(s,
                  base=10,
                  alternate=False,
                  no_neg_0=False,
-                 rounding=round_nearest):
+                 rounding=round_nearest,
+                 add_pct=False):
     '''
     Format a number into fixed point.
     Returns the sign character, and the string that represents the number in
@@ -1502,6 +1503,9 @@ def format_fixed(s,
 
     if sign != '-' and sign_spec != '-':
         sign = sign_spec
+
+    if add_pct:
+        dps += 2
 
     # The number we want to print is lower in magnitude that the requested
     # precision. We should only print 0s.
@@ -1557,6 +1561,9 @@ def format_fixed(s,
     if digits[-1] == "." and strip_last_zero:
         digits = digits[:-1]
 
+    if add_pct:
+        digits = digits + '%'
+
     return sign, digits
 
 
@@ -1607,6 +1614,11 @@ def format_mpf(num, format_spec):
     fmt_type = format_dict['type'].lower()
     precision = format_dict['precision']
 
+    add_pct = False
+    if fmt_type == '%':
+        add_pct = True
+        fmt_type = 'f'
+
     digits = ''
     sign = ''
 
@@ -1653,7 +1665,8 @@ def format_mpf(num, format_spec):
                 base=10,
                 alternate=format_dict['alternate'],
                 no_neg_0=format_dict['no_neg_0'],
-                rounding=rounding
+                rounding=rounding,
+                add_pct=add_pct
                 )
     else:  # The format type is scientific
         sign, digits = format_scientific(
